@@ -31,7 +31,7 @@ struct IQUEUEHEAD
 // queue init
 //---------------------------------------------------------------------
 
-void iqueue_init(struct IQUEUEHEAD *ptr)
+static inline void iqueue_init(struct IQUEUEHEAD *ptr)
 {
 	ptr->next = ptr;
 	ptr->prev = ptr;
@@ -45,7 +45,7 @@ void iqueue_init(struct IQUEUEHEAD *ptr)
 // queue operation
 //---------------------------------------------------------------------
 
-void iqueue_add(struct IQUEUEHEAD *node, struct IQUEUEHEAD *head)
+static inline void iqueue_add(struct IQUEUEHEAD *node, struct IQUEUEHEAD *head)
 {
 	node->prev = head;
 	node->next = head->next;
@@ -53,7 +53,7 @@ void iqueue_add(struct IQUEUEHEAD *node, struct IQUEUEHEAD *head)
 	head->next = node;
 }
 
-void iqueue_add_tail(struct IQUEUEHEAD *node, struct IQUEUEHEAD *head)
+static inline void iqueue_add_tail(struct IQUEUEHEAD *node, struct IQUEUEHEAD *head)
 {
 	node->prev = head->prev;
 	node->next = head;
@@ -61,7 +61,7 @@ void iqueue_add_tail(struct IQUEUEHEAD *node, struct IQUEUEHEAD *head)
 	head->prev = node;
 }
 
-void iqueue_del(struct IQUEUEHEAD *entry)
+static inline void iqueue_del(struct IQUEUEHEAD *entry)
 {
 	entry->next->prev = entry->prev;
 	entry->prev->next = entry->next;
@@ -69,13 +69,13 @@ void iqueue_del(struct IQUEUEHEAD *entry)
 	entry->prev = NULL;
 }
 
-void iqueue_del_init(struct IQUEUEHEAD *entry)
+static inline void iqueue_del_init(struct IQUEUEHEAD *entry)
 {
 	iqueue_del(entry);
 	iqueue_init(entry);
 }
 
-bool iqueue_is_empty(const struct IQUEUEHEAD *entry)
+static inline bool iqueue_is_empty(const struct IQUEUEHEAD *entry)
 {
 	return entry->next == entry;
 }
