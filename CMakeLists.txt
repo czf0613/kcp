@@ -16,7 +16,7 @@ set_target_properties(kcp_shared PROPERTIES
     OUTPUT_NAME kcp
 )
 
-if(UNIX)
+if(UNIX AND NOT ANDROID)
     add_executable(kcp_test main.c)
     target_link_libraries(kcp_test kcp_static)
 endif()

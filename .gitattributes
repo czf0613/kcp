@@ -1,3 +1,2 @@
-**/*.sh linguist-vendored
-**/*.md linguist-vendored
+*.sh linguist-vendored
 main.c linguist-vendored
