@@ -50,25 +50,25 @@ const uint32_t IKCP_FASTACK_LIMIT = 5;	  // max times to trigger fastack
 //---------------------------------------------------------------------
 
 /* encode 8 bits unsigned int */
-static inline char *ikcp_encode8u(char *p, unsigned char c)
+static inline uint8_t *ikcp_encode8u(uint8_t *p, uint8_t c)
 {
-	*(unsigned char *)p++ = c;
+	*p++ = c;
 	return p;
 }
 
 /* decode 8 bits unsigned int */
-static inline const char *ikcp_decode8u(const char *p, unsigned char *c)
+static inline const uint8_t *ikcp_decode8u(const uint8_t *p, uint8_t *c)
 {
-	*c = *(unsigned char *)p++;
+	*c = *p++;
 	return p;
 }
 
 /* encode 16 bits unsigned int (lsb) */
-static inline char *ikcp_encode16u(char *p, unsigned short w)
+static inline uint8_t *ikcp_encode16u(uint8_t *p, unsigned short w)
 {
 #if IWORDS_BIG_ENDIAN
-	*(unsigned char *)(p + 0) = (w & 255);
-	*(unsigned char *)(p + 1) = (w >> 8);
+	*(p + 0) = (w & 0xFF);
+	*(p + 1) = (w >> 8);
 #else
 	memcpy(p, &w, 2);
 #endif
@@ -77,11 +77,11 @@ static inline char *ikcp_encode16u(char *p, unsigned short w)
 }
 
 /* decode 16 bits unsigned int (lsb) */
-static inline const char *ikcp_decode16u(const char *p, unsigned short *w)
+static inline const uint8_t *ikcp_decode16u(const uint8_t *p, unsigned short *w)
 {
 #if IWORDS_BIG_ENDIAN
-	*w = *(const unsigned char *)(p + 1);
-	*w = *(const unsigned char *)(p + 0) + (*w << 8);
+	*w = *(p + 1);
+	*w = *(p + 0) + (*w << 8);
 #else
 	memcpy(w, p, 2);
 #endif
@@ -90,13 +90,13 @@ static inline const char *ikcp_decode16u(const char *p, unsigned short *w)
 }
 
 /* encode 32 bits unsigned int (lsb) */
-static inline char *ikcp_encode32u(char *p, uint32_t l)
+static inline uint8_t *ikcp_encode32u(uint8_t *p, uint32_t l)
 {
 #if IWORDS_BIG_ENDIAN
-	*(unsigned char *)(p + 0) = (unsigned char)((l >> 0) & 0xff);
-	*(unsigned char *)(p + 1) = (unsigned char)((l >> 8) & 0xff);
-	*(unsigned char *)(p + 2) = (unsigned char)((l >> 16) & 0xff);
-	*(unsigned char *)(p + 3) = (unsigned char)((l >> 24) & 0xff);
+	*(p + 0) = (l >> 0) & 0xff;
+	*(p + 1) = (l >> 8) & 0xff;
+	*(p + 2) = (l >> 16) & 0xff;
+	*(p + 3) = (l >> 24) & 0xff;
 #else
 	memcpy(p, &l, 4);
 #endif
@@ -105,13 +105,13 @@ static inline char *ikcp_encode32u(char *p, uint32_t l)
 }
 
 /* decode 32 bits unsigned int (lsb) */
-static inline const char *ikcp_decode32u(const char *p, uint32_t *l)
+static inline const uint8_t *ikcp_decode32u(const uint8_t *p, uint32_t *l)
 {
 #if IWORDS_BIG_ENDIAN
-	*l = *(const unsigned char *)(p + 3);
-	*l = *(const unsigned char *)(p + 2) + (*l << 8);
-	*l = *(const unsigned char *)(p + 1) + (*l << 8);
-	*l = *(const unsigned char *)(p + 0) + (*l << 8);
+	*l = *(p + 3);
+	*l = *(p + 2) + (*l << 8);
+	*l = *(p + 1) + (*l << 8);
+	*l = *(p + 0) + (*l << 8);
 #else
 	memcpy(l, p, 4);
 #endif
@@ -219,7 +219,7 @@ static int ikcp_output(ikcpcb *kcp, const void *data, int size)
 	}
 	if (size == 0)
 		return 0;
-	return kcp->output((const char *)data, size, kcp, kcp->user);
+	return kcp->output((const uint8_t *)data, size, kcp, kcp->user);
 }
 
 // output queue
@@ -264,7 +264,7 @@ ikcpcb *ikcp_create(uint32_t conv, void *user)
 	kcp->mss = kcp->mtu - IKCP_OVERHEAD;
 	kcp->stream = 0;
 
-	kcp->buffer = (char *)ikcp_malloc((kcp->mtu + IKCP_OVERHEAD) * 3);
+	kcp->buffer = (uint8_t *)ikcp_malloc((kcp->mtu + IKCP_OVERHEAD) * 3);
 	if (kcp->buffer == NULL)
 	{
 		ikcp_free(kcp);
@@ -361,7 +361,7 @@ void ikcp_release(ikcpcb *kcp)
 //---------------------------------------------------------------------
 // set output callback, which will be invoked by kcp
 //---------------------------------------------------------------------
-void ikcp_setoutput(ikcpcb *kcp, int (*output)(const char *buf, int len,
+void ikcp_setoutput(ikcpcb *kcp, int (*output)(const uint8_t *buf, int len,
 											   ikcpcb *kcp, void *user))
 {
 	kcp->output = output;
@@ -370,7 +370,7 @@ void ikcp_setoutput(ikcpcb *kcp, int (*output)(const char *buf, int len,
 //---------------------------------------------------------------------
 // user/upper level recv: returns size, returns below zero for EAGAIN
 //---------------------------------------------------------------------
-int ikcp_recv(ikcpcb *kcp, char *buffer, int len)
+int ikcp_recv(ikcpcb *kcp, uint8_t *buffer, int len)
 {
 	struct IQUEUEHEAD *p;
 	int ispeek = (len < 0) ? 1 : 0;
@@ -494,7 +494,7 @@ int ikcp_peeksize(const ikcpcb *kcp)
 //---------------------------------------------------------------------
 // user/upper level send, returns below zero for error
 //---------------------------------------------------------------------
-int ikcp_send(ikcpcb *kcp, const char *buffer, int len)
+int ikcp_send(ikcpcb *kcp, const uint8_t *buffer, int len)
 {
 	IKCPSEG *seg;
 	int count, i;
@@ -828,7 +828,7 @@ void ikcp_parse_data(ikcpcb *kcp, IKCPSEG *newseg)
 //---------------------------------------------------------------------
 // input data
 //---------------------------------------------------------------------
-int ikcp_input(ikcpcb *kcp, const char *data, long size)
+int ikcp_input(ikcpcb *kcp, const uint8_t *data, long size)
 {
 	uint32_t prev_una = kcp->snd_una;
 	uint32_t maxack = 0, latest_ts = 0;
@@ -1017,7 +1017,7 @@ int ikcp_input(ikcpcb *kcp, const char *data, long size)
 //---------------------------------------------------------------------
 // ikcp_encode_seg
 //---------------------------------------------------------------------
-static char *ikcp_encode_seg(char *ptr, const IKCPSEG *seg)
+static uint8_t *ikcp_encode_seg(uint8_t *ptr, const IKCPSEG *seg)
 {
 	ptr = ikcp_encode32u(ptr, seg->conv);
 	ptr = ikcp_encode8u(ptr, (uint8_t)seg->cmd);
@@ -1045,8 +1045,8 @@ static int ikcp_wnd_unused(const ikcpcb *kcp)
 void ikcp_flush(ikcpcb *kcp)
 {
 	uint32_t current = kcp->current;
-	char *buffer = kcp->buffer;
-	char *ptr = buffer;
+	uint8_t *buffer = kcp->buffer;
+	uint8_t *ptr = buffer;
 	int count, size, i;
 	uint32_t resent, cwnd;
 	uint32_t rtomin;
@@ -1374,10 +1374,10 @@ uint32_t ikcp_check(const ikcpcb *kcp, uint32_t current)
 
 int ikcp_setmtu(ikcpcb *kcp, int mtu)
 {
-	char *buffer;
+	uint8_t *buffer;
 	if (mtu < 50 || mtu < (int)IKCP_OVERHEAD)
 		return -1;
-	buffer = (char *)ikcp_malloc((mtu + IKCP_OVERHEAD) * 3);
+	buffer = (uint8_t *)ikcp_malloc((mtu + IKCP_OVERHEAD) * 3);
 	if (buffer == NULL)
 		return -2;
 	kcp->mtu = mtu;
@@ -1455,6 +1455,6 @@ int ikcp_waitsnd(const ikcpcb *kcp)
 uint32_t ikcp_getconv(const void *ptr)
 {
 	uint32_t conv;
-	ikcp_decode32u((const char *)ptr, &conv);
+	ikcp_decode32u((const uint8_t *)ptr, &conv);
 	return conv;
 }
