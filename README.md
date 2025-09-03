@@ -16,7 +16,7 @@ Release中包含了几个常用系统的静态链接库可供使用，不想手�
 
 （个人愚见某些KCP的代码风格和设计似乎不是很符合我们工程上的一些做法，所以作出了一些改进）
 
-主要的修改点有三处，分别是关于整型的定义以及一些内存对齐的处理问题。下方是每项修改的详细说明。
+主要的修改点有四处，分别是关于整型的定义、队列宏以及一些内存对齐的处理问题。下方是每项修改的详细说明。
 
 
 
@@ -48,7 +48,29 @@ typedef int ISTDINT32;
 
 
 
-### 3，内存序和对齐的问题
+### 3, 减少iqueue相关宏
+
+KCP自己实现了一个非常简易的队列，但是这个队列几乎全部是靠宏来实现的，可读性非常差。虽然宏可以有相当方便的内联（有少量性能提升）以及某些*花活*。但对于现代的编译器来说，用宏强行内联可能还不如写个inline交给编译器来自行决定。对于个人而言，为了些许的性能提升而牺牲掉可读性，往往是不可取的（个人意见而已，除非某些性能极其关键的代码）
+
+这个里面只有一个iqueue_entry方法是无法用宏之外的方法实现的，但是恰好KCP的源代码中，只有拿取`iqueue_entry(ptr, IKCPSEG, node);`这样一种调用，那么我们就考虑把这个宏变成一个写死的方法就可以了。
+
+``` c
+static inline struct IKCPSEG *iqueue_entry_from_node(struct IQUEUEHEAD *ptr)
+{
+  // 假设ptr为0的时候，node的地址是多少，实际上就相当于node本身在结构体内的偏移量
+	struct IQUEUEHEAD *node_addr = &((struct IKCPSEG *)0)->node;
+	uintptr_t offset_of_node = (uintptr_t)node_addr;
+  // 减去这个偏移量就能拿到这个结构体的首地址了
+	uintptr_t ptr_addr = (uintptr_t)ptr;
+	return (struct IKCPSEG *)(ptr_addr - offset_of_node);
+}
+```
+
+改造完之后，这个iqueue相关的代码可读性就大大加强了，而且性能也不会有很大的损失。（我们这里用的是`static inline`方式进行内联，因此大概率这些函数会成功被编译器内联，所以性能实际上跟宏差不多）
+
+
+
+### 4，内存序和对齐的问题
 
 `ikcp.c`中有若干个辅助函数，例如`ikcp_encode32u`这种，它用到的宏定义里面有一个`IWORDS_MUST_ALIGN`，也就是说在一些要求内存对齐的平台上，它会强制要求逐字节拷贝而不是memcpy。
 

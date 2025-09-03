@@ -229,7 +229,7 @@ void ikcp_qprint(const char *name, const struct IQUEUEHEAD *head)
 	const struct IQUEUEHEAD *p;
 	printf("<%s>: [", name);
 	for (p = head->next; p != head; p = p->next) {
-		const IKCPSEG *seg = iqueue_entry(p, const IKCPSEG, node);
+		const IKCPSEG *seg = iqueue_entry_from_node(p);
 		printf("(%lu %d)", (unsigned long)seg->sn, (int)(seg->ts % 10000));
 		if (p->next != head) printf(",");
 	}
@@ -316,25 +316,25 @@ void ikcp_release(ikcpcb *kcp)
 		IKCPSEG *seg;
 		while (!iqueue_is_empty(&kcp->snd_buf))
 		{
-			seg = iqueue_entry(kcp->snd_buf.next, IKCPSEG, node);
+			seg = iqueue_entry_from_node(kcp->snd_buf.next);
 			iqueue_del(&seg->node);
 			ikcp_segment_delete(kcp, seg);
 		}
 		while (!iqueue_is_empty(&kcp->rcv_buf))
 		{
-			seg = iqueue_entry(kcp->rcv_buf.next, IKCPSEG, node);
+			seg = iqueue_entry_from_node(kcp->rcv_buf.next);
 			iqueue_del(&seg->node);
 			ikcp_segment_delete(kcp, seg);
 		}
 		while (!iqueue_is_empty(&kcp->snd_queue))
 		{
-			seg = iqueue_entry(kcp->snd_queue.next, IKCPSEG, node);
+			seg = iqueue_entry_from_node(kcp->snd_queue.next);
 			iqueue_del(&seg->node);
 			ikcp_segment_delete(kcp, seg);
 		}
 		while (!iqueue_is_empty(&kcp->rcv_queue))
 		{
-			seg = iqueue_entry(kcp->rcv_queue.next, IKCPSEG, node);
+			seg = iqueue_entry_from_node(kcp->rcv_queue.next);
 			iqueue_del(&seg->node);
 			ikcp_segment_delete(kcp, seg);
 		}
@@ -400,7 +400,7 @@ int ikcp_recv(ikcpcb *kcp, uint8_t *buffer, int len)
 	for (len = 0, p = kcp->rcv_queue.next; p != &kcp->rcv_queue;)
 	{
 		int fragment;
-		seg = iqueue_entry(p, IKCPSEG, node);
+		seg = iqueue_entry_from_node(p);
 		p = p->next;
 
 		if (buffer)
@@ -433,7 +433,7 @@ int ikcp_recv(ikcpcb *kcp, uint8_t *buffer, int len)
 	// move available data from rcv_buf -> rcv_queue
 	while (!iqueue_is_empty(&kcp->rcv_buf))
 	{
-		seg = iqueue_entry(kcp->rcv_buf.next, IKCPSEG, node);
+		seg = iqueue_entry_from_node(kcp->rcv_buf.next);
 		if (seg->sn == kcp->rcv_nxt && kcp->nrcv_que < kcp->rcv_wnd)
 		{
 			iqueue_del(&seg->node);
@@ -473,7 +473,7 @@ int ikcp_peeksize(const ikcpcb *kcp)
 	if (iqueue_is_empty(&kcp->rcv_queue))
 		return -1;
 
-	seg = iqueue_entry(kcp->rcv_queue.next, IKCPSEG, node);
+	seg = iqueue_entry_from_node(kcp->rcv_queue.next);
 	if (seg->frg == 0)
 		return seg->len;
 
@@ -482,7 +482,7 @@ int ikcp_peeksize(const ikcpcb *kcp)
 
 	for (p = kcp->rcv_queue.next; p != &kcp->rcv_queue; p = p->next)
 	{
-		seg = iqueue_entry(p, IKCPSEG, node);
+		seg = iqueue_entry_from_node(p);
 		length += seg->len;
 		if (seg->frg == 0)
 			break;
@@ -509,7 +509,7 @@ int ikcp_send(ikcpcb *kcp, const uint8_t *buffer, int len)
 	{
 		if (!iqueue_is_empty(&kcp->snd_queue))
 		{
-			IKCPSEG *old = iqueue_entry(kcp->snd_queue.prev, IKCPSEG, node);
+			IKCPSEG *old = iqueue_entry_from_node(kcp->snd_queue.prev);
 			if (old->len < kcp->mss)
 			{
 				int capacity = kcp->mss - old->len;
@@ -616,7 +616,7 @@ static void ikcp_shrink_buf(ikcpcb *kcp)
 	struct IQUEUEHEAD *p = kcp->snd_buf.next;
 	if (p != &kcp->snd_buf)
 	{
-		IKCPSEG *seg = iqueue_entry(p, IKCPSEG, node);
+		IKCPSEG *seg = iqueue_entry_from_node(p);
 		kcp->snd_una = seg->sn;
 	}
 	else
@@ -634,7 +634,7 @@ static void ikcp_parse_ack(ikcpcb *kcp, uint32_t sn)
 
 	for (p = kcp->snd_buf.next; p != &kcp->snd_buf; p = next)
 	{
-		IKCPSEG *seg = iqueue_entry(p, IKCPSEG, node);
+		IKCPSEG *seg = iqueue_entry_from_node(p);
 		next = p->next;
 		if (sn == seg->sn)
 		{
@@ -655,7 +655,7 @@ static void ikcp_parse_una(ikcpcb *kcp, uint32_t una)
 	struct IQUEUEHEAD *p, *next;
 	for (p = kcp->snd_buf.next; p != &kcp->snd_buf; p = next)
 	{
-		IKCPSEG *seg = iqueue_entry(p, IKCPSEG, node);
+		IKCPSEG *seg = iqueue_entry_from_node(p);
 		next = p->next;
 		if (_itimediff(una, seg->sn) > 0)
 		{
@@ -679,7 +679,7 @@ static void ikcp_parse_fastack(ikcpcb *kcp, uint32_t sn, uint32_t ts)
 
 	for (p = kcp->snd_buf.next; p != &kcp->snd_buf; p = next)
 	{
-		IKCPSEG *seg = iqueue_entry(p, IKCPSEG, node);
+		IKCPSEG *seg = iqueue_entry_from_node(p);
 		next = p->next;
 		if (_itimediff(sn, seg->sn) < 0)
 		{
@@ -767,7 +767,7 @@ void ikcp_parse_data(ikcpcb *kcp, IKCPSEG *newseg)
 
 	for (p = kcp->rcv_buf.prev; p != &kcp->rcv_buf; p = prev)
 	{
-		IKCPSEG *seg = iqueue_entry(p, IKCPSEG, node);
+		IKCPSEG *seg = iqueue_entry_from_node(p);
 		prev = p->prev;
 		if (seg->sn == sn)
 		{
@@ -799,7 +799,7 @@ void ikcp_parse_data(ikcpcb *kcp, IKCPSEG *newseg)
 	// move available data from rcv_buf -> rcv_queue
 	while (!iqueue_is_empty(&kcp->rcv_buf))
 	{
-		IKCPSEG *seg = iqueue_entry(kcp->rcv_buf.next, IKCPSEG, node);
+		IKCPSEG *seg = iqueue_entry_from_node(kcp->rcv_buf.next);
 		if (seg->sn == kcp->rcv_nxt && kcp->nrcv_que < kcp->rcv_wnd)
 		{
 			iqueue_del(&seg->node);
@@ -1152,7 +1152,7 @@ void ikcp_flush(ikcpcb *kcp)
 		if (iqueue_is_empty(&kcp->snd_queue))
 			break;
 
-		newseg = iqueue_entry(kcp->snd_queue.next, IKCPSEG, node);
+		newseg = iqueue_entry_from_node(kcp->snd_queue.next);
 
 		iqueue_del(&newseg->node);
 		iqueue_add_tail(&newseg->node, &kcp->snd_buf);
@@ -1178,7 +1178,7 @@ void ikcp_flush(ikcpcb *kcp)
 	// flush data segments
 	for (p = kcp->snd_buf.next; p != &kcp->snd_buf; p = p->next)
 	{
-		IKCPSEG *segment = iqueue_entry(p, IKCPSEG, node);
+		IKCPSEG *segment = iqueue_entry_from_node(p);
 		int needsend = 0;
 		if (segment->xmit == 0)
 		{
@@ -1355,7 +1355,7 @@ uint32_t ikcp_check(const ikcpcb *kcp, uint32_t current)
 
 	for (p = kcp->snd_buf.next; p != &kcp->snd_buf; p = p->next)
 	{
-		const IKCPSEG *seg = iqueue_entry(p, const IKCPSEG, node);
+		const IKCPSEG *seg = iqueue_entry_from_node(p);
 		int32_t diff = _itimediff(seg->resendts, current);
 		if (diff <= 0)
 		{

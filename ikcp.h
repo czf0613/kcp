@@ -37,10 +37,6 @@ static inline void iqueue_init(struct IQUEUEHEAD *ptr)
 	ptr->prev = ptr;
 }
 
-#define IOFFSETOF(TYPE, MEMBER) ((size_t)(&((TYPE *)0)->MEMBER))
-#define ICONTAINEROF(ptr, type, member) ((type *)(((char *)ptr) - IOFFSETOF(type, member)))
-#define iqueue_entry(ptr, type, member) ICONTAINEROF(ptr, type, member)
-
 //---------------------------------------------------------------------
 // queue operation
 //---------------------------------------------------------------------
@@ -130,6 +126,15 @@ struct IKCPSEG
 	uint32_t xmit;
 	uint8_t data[1];
 };
+
+static inline struct IKCPSEG *iqueue_entry_from_node(struct IQUEUEHEAD *ptr)
+{
+	struct IQUEUEHEAD *node_addr = &((struct IKCPSEG *)0)->node;
+	uintptr_t offset_of_node = (uintptr_t)node_addr;
+
+	uintptr_t ptr_addr = (uintptr_t)ptr;
+	return (struct IKCPSEG *)(ptr_addr - offset_of_node);
+}
 
 //---------------------------------------------------------------------
 // IKCPCB
